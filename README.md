@@ -1,18 +1,6 @@
-# Welcome to your Lovable project
+# FetchYT
 
 ## Project info
-
-**URL**: https://lovable.dev/projects/2969a7ae-3908-46ea-9ef5-123dec476df5
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/2969a7ae-3908-46ea-9ef5-123dec476df5) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
 
 **Use your preferred IDE**
 
@@ -36,38 +24,36 @@ npm i
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+# FetchYT Backend Server
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This is the Go backend server for FetchYT, a YouTube video downloader application.
 
-**Use GitHub Codespaces**
+## Prerequisites
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Before you begin, ensure you have the following installed:
+- Go (version 1.16 or later)
+- FFmpeg
+- yt-dlp (Python-based YouTube downloader)
 
-## What technologies are used for this project?
+## Installation
 
-This project is built with:
+1. Install Go: [https://golang.org/doc/install](https://golang.org/doc/install)
+2. Install FFmpeg: [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
+3. Install yt-dlp:
+   ```bash
+   pip install yt-dlp
+   ```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Getting Started
 
-## How can I deploy this project?
+1. Clone the repository
+2. Navigate to the backend directory
+3. Build and run the server:
 
-Simply open [Lovable](https://lovable.dev/projects/2969a7ae-3908-46ea-9ef5-123dec476df5) and click on Share -> Publish.
+```bash
+cd backend
+go build
+./fetchyt-backend
+```
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+The server will start on `http://localhost:8080` by default.
