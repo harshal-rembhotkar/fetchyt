@@ -1,5 +1,6 @@
 
 import { Format, VideoResolution } from "@/components/FormatSelector";
+import { toast } from "@/components/ui/sonner";
 
 export interface VideoInfo {
   id: string;
@@ -19,9 +20,36 @@ export interface DownloadProgress {
 // Base URL for our Go backend API
 const API_BASE_URL = 'http://localhost:8080/api';
 
+// Check if backend is available
+const checkBackendConnection = async (): Promise<boolean> => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+    
+    const response = await fetch(`${API_BASE_URL}/info?url=test`, {
+      method: 'GET',
+      signal: controller.signal
+    }).catch(() => null);
+    
+    clearTimeout(timeoutId);
+    return !!response;
+  } catch (error) {
+    return false;
+  }
+};
+
 // Real implementation that connects to Go backend
 export const fetchVideoInfo = async (url: string): Promise<VideoInfo> => {
   try {
+    // Check if backend is available
+    const isBackendAvailable = await checkBackendConnection();
+    if (!isBackendAvailable) {
+      toast.error('Backend Connection Error', {
+        description: 'Unable to connect to the download server. Make sure the Go backend is running on port 8080.',
+      });
+      throw new Error('Backend server is not available. Please start the server and try again.');
+    }
+
     const response = await fetch(`${API_BASE_URL}/info?url=${encodeURIComponent(url)}`, {
       method: 'GET',
       headers: {
@@ -48,16 +76,36 @@ export const generatePreviewUrl = async (
   resolution: VideoResolution = '720p'
 ): Promise<string> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/preview?id=${videoId}&format=${format}&resolution=${resolution}`, {
-      method: 'GET',
-    });
+    // For MP4 format, we can provide an embedded YouTube player URL as fallback
+    // even if the backend is not available
+    if (format === 'mp4') {
+      try {
+        const response = await fetch(`${API_BASE_URL}/preview?id=${videoId}&format=${format}&resolution=${resolution}`, {
+          method: 'GET',
+        });
 
-    if (!response.ok) {
-      throw new Error(`Failed to generate preview: ${response.status}`);
+        if (response.ok) {
+          return await response.text();
+        }
+      } catch (error) {
+        console.warn('Preview generation using backend failed, using fallback:', error);
+      }
+      
+      // Fallback to YouTube embed
+      return `https://www.youtube.com/embed/${videoId}`;
+    } else {
+      // For audio, we need the backend
+      const response = await fetch(`${API_BASE_URL}/preview?id=${videoId}&format=${format}&resolution=${resolution}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate preview: ${response.status}`);
+      }
+
+      // Return URL to preview the content
+      return await response.text();
     }
-
-    // Return URL to preview the content
-    return await response.text();
   } catch (error) {
     console.error('Preview generation error:', error);
     
@@ -65,7 +113,7 @@ export const generatePreviewUrl = async (
     if (format === 'mp4') {
       return `https://www.youtube.com/embed/${videoId}`;
     } else {
-      return "https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav";
+      throw new Error('Audio preview generation requires the backend server to be running');
     }
   }
 };
@@ -78,6 +126,15 @@ export const downloadVideo = async (
   onProgress: (progress: number) => void
 ): Promise<string | undefined> => {
   try {
+    // Check if backend is available before attempting download
+    const isBackendAvailable = await checkBackendConnection();
+    if (!isBackendAvailable) {
+      toast.error('Backend Connection Error', {
+        description: 'Unable to connect to the download server. Make sure the Go backend is running on port 8080.',
+      });
+      throw new Error('Backend server is not available. Please start the server and try again.');
+    }
+    
     // Notify start of download
     onProgress(5);
     
@@ -136,6 +193,11 @@ export const getDownloadedFilePath = async (
   format: Format
 ): Promise<string | null> => {
   try {
+    const isBackendAvailable = await checkBackendConnection();
+    if (!isBackendAvailable) {
+      return null;
+    }
+    
     const response = await fetch(`${API_BASE_URL}/getFile?id=${videoId}&format=${format}`);
     
     if (!response.ok) {

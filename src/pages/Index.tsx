@@ -7,6 +7,7 @@ import FormatSelector, { Format, VideoResolution } from '@/components/FormatSele
 import DownloadStatus, { DownloadState } from '@/components/DownloadStatus';
 import HowItWorks from '@/components/HowItWorks';
 import WhyChooseFetchYT from '@/components/WhyChooseFetchYT';
+import BackendStatus from '@/components/BackendStatus';
 import { 
   fetchVideoInfo, 
   downloadVideo, 
@@ -145,6 +146,8 @@ const Index = () => {
         </div>
         
         <div className="space-y-16">
+          <BackendStatus />
+          
           <Hero />
           
           <div className="space-y-6">
