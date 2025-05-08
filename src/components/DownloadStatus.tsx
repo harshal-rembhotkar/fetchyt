@@ -20,6 +20,7 @@ interface DownloadStatusProps {
   onRetry: () => void;
   onPlay?: () => void;
   onPause?: () => void;
+  isDownloaded?: boolean;
 }
 
 const DownloadStatus: React.FC<DownloadStatusProps> = ({
@@ -34,6 +35,7 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
   onRetry,
   onPlay,
   onPause,
+  isDownloaded = false,
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [audioError, setAudioError] = useState(false);
@@ -77,7 +79,7 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
             <div className="space-y-2">
               <h3 className="font-medium truncate">{videoTitle}</h3>
               <p className="text-sm text-muted-foreground">
-                Ready to download as {format === 'mp4' 
+                {isDownloaded ? 'Already downloaded as' : 'Ready to download as'} {format === 'mp4' 
                   ? <>
                       <FileVideo className="inline h-4 w-4 mr-1" />
                       Video (MP4) - {resolution}
@@ -132,19 +134,29 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Preview the {format === 'mp4' ? 'video' : 'audio'} before downloading
+                  {isDownloaded ? 'Play your downloaded' : 'Preview the'} {format === 'mp4' ? 'video' : 'audio'} {!isDownloaded && 'before downloading'}
                 </p>
               </div>
             )}
 
-            <Button 
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" 
-              onClick={onDownload}
-              size="lg"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download Now
-            </Button>
+            {!isDownloaded ? (
+              <Button 
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" 
+                onClick={onDownload}
+                size="lg"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download Now
+              </Button>
+            ) : (
+              <Button 
+                variant="outline"
+                className="w-full" 
+                onClick={onRetry}
+              >
+                Download Another
+              </Button>
+            )}
           </div>
         )}
 
