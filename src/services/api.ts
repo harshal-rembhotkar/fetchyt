@@ -9,6 +9,13 @@ export interface VideoInfo {
   author: string;
 }
 
+export interface DownloadProgress {
+  id: string;
+  progress: number;
+  status: string;
+  filePath?: string;
+}
+
 // Base URL for our Go backend API
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -69,39 +76,43 @@ export const downloadVideo = async (
   format: Format,
   resolution: VideoResolution = '720p',
   onProgress: (progress: number) => void
-): Promise<void> => {
+): Promise<string | undefined> => {
   try {
     // Notify start of download
     onProgress(5);
     
-    // Create a URL to initiate the download
-    const downloadUrl = `${API_BASE_URL}/download?id=${videoId}&format=${format}&resolution=${resolution}`;
+    // Start the download process
+    const initResponse = await fetch(`${API_BASE_URL}/download?id=${videoId}&format=${format}&resolution=${resolution}`);
+    
+    if (!initResponse.ok) {
+      throw new Error(`Failed to start download: ${initResponse.status}`);
+    }
     
     // For progress tracking, we'll use an EventSource to listen for progress updates
-    // This requires server-sent events support in the backend
     const eventSource = new EventSource(`${API_BASE_URL}/progress?id=${videoId}`);
     
     return new Promise((resolve, reject) => {
+      let downloadedFilePath: string | undefined;
+      
       eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+        const data = JSON.parse(event.data) as DownloadProgress;
         if (data.progress) {
           onProgress(data.progress);
         }
         
-        // When download is complete, close the connection and resolve
+        // Store the file path for return when complete
+        if (data.filePath) {
+          downloadedFilePath = `http://localhost:8080${data.filePath}`;
+        }
+        
+        // When download is complete, close the connection and resolve with the file path
         if (data.status === 'complete') {
           eventSource.close();
-          
-          // Trigger the file download
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          // Let the browser handle the filename from Content-Disposition
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
           onProgress(100);
-          resolve();
+          resolve(downloadedFilePath);
+        } else if (data.status === 'error') {
+          eventSource.close();
+          reject(new Error('Download failed. Check logs for details.'));
         }
       };
       
@@ -116,6 +127,26 @@ export const downloadVideo = async (
     throw new Error(error instanceof Error 
       ? error.message 
       : 'Failed to download the file. Please try again.');
+  }
+};
+
+// Get the file path for a previously downloaded video
+export const getDownloadedFilePath = async (
+  videoId: string, 
+  format: Format
+): Promise<string | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/getFile?id=${videoId}&format=${format}`);
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    return `http://localhost:8080${data.filePath}`;
+  } catch (error) {
+    console.error('Error getting file path:', error);
+    return null;
   }
 };
 

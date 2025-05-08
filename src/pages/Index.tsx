@@ -7,7 +7,13 @@ import FormatSelector, { Format, VideoResolution } from '@/components/FormatSele
 import DownloadStatus, { DownloadState } from '@/components/DownloadStatus';
 import HowItWorks from '@/components/HowItWorks';
 import WhyChooseFetchYT from '@/components/WhyChooseFetchYT';
-import { fetchVideoInfo, downloadVideo, generatePreviewUrl, type VideoInfo } from '@/services/api';
+import { 
+  fetchVideoInfo, 
+  downloadVideo, 
+  generatePreviewUrl, 
+  getDownloadedFilePath,
+  type VideoInfo 
+} from '@/services/api';
 
 const Index = () => {
   const [url, setUrl] = useState('');
@@ -18,6 +24,7 @@ const Index = () => {
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [error, setError] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
+  const [downloadedUrl, setDownloadedUrl] = useState<string | undefined>(undefined);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handleUrlSubmit = async (videoUrl: string) => {
@@ -25,10 +32,20 @@ const Index = () => {
     setDownloadState('loading');
     setError('');
     setPreviewUrl(undefined);
+    setDownloadedUrl(undefined);
     
     try {
       const info = await fetchVideoInfo(videoUrl);
       setVideoInfo(info);
+      
+      // Check if this video has already been downloaded
+      const existingFile = await getDownloadedFilePath(info.id, format);
+      if (existingFile) {
+        setDownloadedUrl(existingFile);
+        toast.info('File Available', {
+          description: 'This video has already been downloaded and is ready to play.',
+        });
+      }
       
       // Generate preview URL based on selected format
       const preview = await generatePreviewUrl(info.id, format, resolution);
@@ -50,6 +67,15 @@ const Index = () => {
     const updatePreview = async () => {
       if (videoInfo && downloadState === 'ready') {
         try {
+          // Check if this format has already been downloaded
+          const existingFile = await getDownloadedFilePath(videoInfo.id, format);
+          if (existingFile) {
+            setDownloadedUrl(existingFile);
+          } else {
+            setDownloadedUrl(undefined);
+          }
+          
+          // Always update the preview
           const preview = await generatePreviewUrl(videoInfo.id, format, resolution);
           setPreviewUrl(preview);
         } catch (err) {
@@ -68,9 +94,14 @@ const Index = () => {
     setProgress(0);
     
     try {
-      await downloadVideo(videoInfo.id, format, resolution, (p) => {
+      const filePath = await downloadVideo(videoInfo.id, format, resolution, (p) => {
         setProgress(p);
       });
+      
+      if (filePath) {
+        setDownloadedUrl(filePath);
+      }
+      
       setDownloadState('complete');
       toast.success('Download Complete', {
         description: 'Your file has been downloaded successfully.',
@@ -92,6 +123,7 @@ const Index = () => {
     setProgress(0);
     setError('');
     setPreviewUrl(undefined);
+    setDownloadedUrl(undefined);
   };
 
   const handlePlay = () => {
@@ -138,11 +170,12 @@ const Index = () => {
                   resolution={format === 'mp4' ? resolution : undefined}
                   videoTitle={videoInfo?.title}
                   errorMessage={error}
-                  previewUrl={previewUrl}
+                  previewUrl={downloadedUrl || previewUrl}
                   onDownload={handleDownload}
                   onRetry={handleReset}
                   onPlay={handlePlay}
                   onPause={handlePause}
+                  isDownloaded={!!downloadedUrl}
                 />
               </div>
             )}

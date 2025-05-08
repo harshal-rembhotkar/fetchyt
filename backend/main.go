@@ -30,6 +30,7 @@ type DownloadProgress struct {
 	ID       string  `json:"id"`
 	Progress float64 `json:"progress"`
 	Status   string  `json:"status"`
+	FilePath string  `json:"filePath,omitempty"`
 }
 
 var (
@@ -56,18 +57,31 @@ func main() {
 	http.HandleFunc("/api/preview", corsMiddleware(handlePreview))
 	http.HandleFunc("/api/download", corsMiddleware(handleDownload))
 	http.HandleFunc("/api/progress", corsMiddleware(handleProgress))
+	http.HandleFunc("/api/getFile", corsMiddleware(handleGetFile))
 	
-	// Serve downloaded media files
-	//http.Handle("/media/", corsMiddleware(http.StripPrefix("/media/", http.FileServer(http.Dir(mediaDir)))))
+	// Serve downloaded media files with proper headers
 	mediaHandler := http.StripPrefix("/media/", http.FileServer(http.Dir(mediaDir)))
-
 	http.Handle("/media/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-	    mediaHandler.ServeHTTP(w, r)
+		w.Header().Set("Content-Disposition", "inline")
+		
+		// Set appropriate content type based on extension
+		ext := filepath.Ext(r.URL.Path)
+		switch ext {
+		case ".mp4":
+			w.Header().Set("Content-Type", "video/mp4")
+		case ".mp3":
+			w.Header().Set("Content-Type", "audio/mpeg")
+		case ".webm":
+			w.Header().Set("Content-Type", "video/webm")
+		}
+		
+		mediaHandler.ServeHTTP(w, r)
 	}))
 
 	// Start server
 	port := 8080
 	log.Printf("Starting server on :%d...", port)
+	log.Printf("Media directory: %s", mediaDir)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
@@ -211,6 +225,39 @@ func handlePreview(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, previewURL)
 }
 
+// Get file path for a downloaded video
+func handleGetFile(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	format := r.URL.Query().Get("format")
+	
+	if id == "" || format == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+		return
+	}
+	
+	var filePath string
+	if format == "mp4" {
+		filePath = fmt.Sprintf("/media/%s.mp4", id)
+	} else {
+		filePath = fmt.Sprintf("/media/%s.mp3", id)
+	}
+	
+	// Check if file exists
+	fullPath := filepath.Join(".", filePath)
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+	
+	// Return the file path
+	response := map[string]string{
+		"filePath": filePath,
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 // Handle download requests
 func handleDownload(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
@@ -248,14 +295,16 @@ func startDownload(id, format, resolution string) {
 	downloadMutex.Unlock()
 
 	// Update progress to start
-	updateProgress(id, 5, "downloading")
+	updateProgress(id, 5, "downloading", "")
 
 	url := fmt.Sprintf("https://www.youtube.com/watch?v=%s", id)
-	outputFile := ""
+	var outputFile string
+	var relativeFilePath string
 	
 	if format == "mp4" {
 		// For video downloads
 		outputFile = filepath.Join(mediaDir, fmt.Sprintf("%s.mp4", id))
+		relativeFilePath = fmt.Sprintf("/media/%s.mp4", id)
 		
 		// Format code for the selected resolution
 		formatCode := "best"
@@ -285,14 +334,14 @@ func startDownload(id, format, resolution string) {
 		pipe, err := cmd.StderrPipe()
 		if err != nil {
 			log.Printf("Error creating pipe: %v", err)
-			updateProgress(id, 0, "error")
+			updateProgress(id, 0, "error", "")
 			return
 		}
 		
 		// Start the download
 		if err := cmd.Start(); err != nil {
 			log.Printf("Error starting download: %v", err)
-			updateProgress(id, 0, "error")
+			updateProgress(id, 0, "error", "")
 			return
 		}
 		
@@ -304,19 +353,20 @@ func startDownload(id, format, resolution string) {
 			line := scanner.Text()
 			if matches := progressRegex.FindStringSubmatch(line); len(matches) > 1 {
 				progress, _ := strconv.ParseFloat(matches[1], 64)
-				updateProgress(id, progress, "downloading")
+				updateProgress(id, progress, "downloading", "")
 			}
 		}
 		
 		// Wait for command to complete
 		if err := cmd.Wait(); err != nil {
 			log.Printf("Download error: %v", err)
-			updateProgress(id, 0, "error")
+			updateProgress(id, 0, "error", "")
 			return
 		}
 	} else {
 		// For audio downloads
 		outputFile = filepath.Join(mediaDir, fmt.Sprintf("%s.mp3", id))
+		relativeFilePath = fmt.Sprintf("/media/%s.mp3", id)
 		
 		// Download with progress updates
 		args := []string{
@@ -334,14 +384,14 @@ func startDownload(id, format, resolution string) {
 		pipe, err := cmd.StderrPipe()
 		if err != nil {
 			log.Printf("Error creating pipe: %v", err)
-			updateProgress(id, 0, "error")
+			updateProgress(id, 0, "error", "")
 			return
 		}
 		
 		// Start the download
 		if err := cmd.Start(); err != nil {
 			log.Printf("Error starting download: %v", err)
-			updateProgress(id, 0, "error")
+			updateProgress(id, 0, "error", "")
 			return
 		}
 		
@@ -353,29 +403,32 @@ func startDownload(id, format, resolution string) {
 			line := scanner.Text()
 			if matches := progressRegex.FindStringSubmatch(line); len(matches) > 1 {
 				progress, _ := strconv.ParseFloat(matches[1], 64)
-				updateProgress(id, progress, "downloading")
+				updateProgress(id, progress, "downloading", "")
 			}
 		}
 		
 		// Wait for command to complete
 		if err := cmd.Wait(); err != nil {
 			log.Printf("Download error: %v", err)
-			updateProgress(id, 0, "error")
+			updateProgress(id, 0, "error", "")
 			return
 		}
 	}
 
-	// Update progress to complete
-	updateProgress(id, 100, "complete")
+	// Update progress to complete with the file path
+	updateProgress(id, 100, "complete", relativeFilePath)
 }
 
 // Update download progress and notify clients
-func updateProgress(id string, progress float64, status string) {
+func updateProgress(id string, progress float64, status string, filePath string) {
 	// Update progress
 	downloadMutex.Lock()
 	if downloads[id] != nil {
 		downloads[id].Progress = progress
 		downloads[id].Status = status
+		if filePath != "" {
+			downloads[id].FilePath = filePath
+		}
 	}
 	downloadMutex.Unlock()
 
@@ -383,11 +436,17 @@ func updateProgress(id string, progress float64, status string) {
 	clientMutex.Lock()
 	if clients[id] != nil {
 		for client := range clients[id] {
-			client <- DownloadProgress{
+			progressData := DownloadProgress{
 				ID:       id,
 				Progress: progress,
 				Status:   status,
 			}
+			
+			if filePath != "" {
+				progressData.FilePath = filePath
+			}
+			
+			client <- progressData
 		}
 	}
 	clientMutex.Unlock()

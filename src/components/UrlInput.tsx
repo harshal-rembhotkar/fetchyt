@@ -37,17 +37,6 @@ const UrlInput: React.FC<UrlInputProps> = ({ onUrlSubmit, isLoading }) => {
     setError('');
   };
 
-  // Add a helper that explains backend setup requirements
-  const backendNotSetupInfo = () => (
-    <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-md text-sm">
-      <p className="font-medium">Backend Server Required</p>
-      <p className="mt-1">
-        Make sure to set up and run the Go backend server on localhost:8080 for the downloader to work.
-        See the README file for server setup instructions.
-      </p>
-    </div>
-  );
-
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-2">
       <div className="relative flex items-center">
@@ -78,7 +67,6 @@ const UrlInput: React.FC<UrlInputProps> = ({ onUrlSubmit, isLoading }) => {
         </Button>
       </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
-      {backendNotSetupInfo()}
     </form>
   );
 };
