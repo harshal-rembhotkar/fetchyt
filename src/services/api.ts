@@ -1,6 +1,6 @@
 
 import { Format, VideoResolution } from "@/components/FormatSelector";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 export interface VideoInfo {
   id: string;
@@ -17,10 +17,30 @@ export interface DownloadProgress {
   filePath?: string;
 }
 
-// Base URL for our Go backend API - update to use the cloud server
-const API_BASE_URL = 'http://195.88.71.182:8080/api';
+// Get the server address - can be updated through the BackendStatus component
+export const getServerAddress = (): string => {
+  // First try to get from localStorage
+  const savedAddress = localStorage.getItem('backendServerAddress');
+  if (savedAddress) return savedAddress;
+  
+  // Default value
+  return '195.88.71.182:8080';
+};
+
+// Set the server address
+export const setServerAddress = (address: string): void => {
+  localStorage.setItem('backendServerAddress', address);
+};
+
+// Base URL for our Go backend API
+export const getApiBaseUrl = (): string => {
+  return `http://${getServerAddress()}/api`;
+};
+
 // Base Media URL for downloads
-const MEDIA_BASE_URL = 'http://195.88.71.182:8080/media';
+export const getMediaBaseUrl = (): string => {
+  return `http://${getServerAddress()}/media`;
+};
 
 // Check if backend is available
 const checkBackendConnection = async (): Promise<boolean> => {
@@ -28,13 +48,13 @@ const checkBackendConnection = async (): Promise<boolean> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
-    const response = await fetch(`${API_BASE_URL}/info?url=test`, {
+    const response = await fetch(`${getApiBaseUrl()}/info?url=test`, {
       method: 'GET',
       signal: controller.signal
     }).catch(() => null);
     
     clearTimeout(timeoutId);
-    return !!response;
+    return !!(response && response.ok);
   } catch (error) {
     return false;
   }
@@ -47,12 +67,12 @@ export const fetchVideoInfo = async (url: string): Promise<VideoInfo> => {
     const isBackendAvailable = await checkBackendConnection();
     if (!isBackendAvailable) {
       toast.error('Backend Connection Error', {
-        description: 'Unable to connect to the download server. Make sure the Go backend is running on 195.88.71.182:8080.',
+        description: `Unable to connect to the download server at ${getServerAddress()}. Make sure the Go backend is running.`,
       });
       throw new Error('Backend server is not available. Please start the server and try again.');
     }
 
-    const response = await fetch(`${API_BASE_URL}/info?url=${encodeURIComponent(url)}`, {
+    const response = await fetch(`${getApiBaseUrl()}/info?url=${encodeURIComponent(url)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -82,14 +102,14 @@ export const generatePreviewUrl = async (
     // even if the backend is not available
     if (format === 'mp4') {
       try {
-        const response = await fetch(`${API_BASE_URL}/preview?id=${videoId}&format=${format}&resolution=${resolution}`, {
+        const response = await fetch(`${getApiBaseUrl()}/preview?id=${videoId}&format=${format}&resolution=${resolution}`, {
           method: 'GET',
         });
 
         if (response.ok) {
           const previewPath = await response.text();
           // Convert relative path to absolute URL with our backend
-          return previewPath.startsWith('http') ? previewPath : `http://195.88.71.182:8080${previewPath}`;
+          return previewPath.startsWith('http') ? previewPath : `http://${getServerAddress()}${previewPath}`;
         }
       } catch (error) {
         console.warn('Preview generation using backend failed, using fallback:', error);
@@ -99,7 +119,7 @@ export const generatePreviewUrl = async (
       return `https://www.youtube.com/embed/${videoId}`;
     } else {
       // For audio, we need the backend
-      const response = await fetch(`${API_BASE_URL}/preview?id=${videoId}&format=${format}&resolution=${resolution}`, {
+      const response = await fetch(`${getApiBaseUrl()}/preview?id=${videoId}&format=${format}&resolution=${resolution}`, {
         method: 'GET',
       });
 
@@ -109,7 +129,7 @@ export const generatePreviewUrl = async (
 
       // Return URL to preview the content (make sure it's a full URL)
       const previewPath = await response.text();
-      return previewPath.startsWith('http') ? previewPath : `http://195.88.71.182:8080${previewPath}`;
+      return previewPath.startsWith('http') ? previewPath : `http://${getServerAddress()}${previewPath}`;
     }
   } catch (error) {
     console.error('Preview generation error:', error);
@@ -123,7 +143,7 @@ export const generatePreviewUrl = async (
   }
 };
 
-// Real implementation to download content through Go backend
+// Real implementation to download video through Go backend
 export const downloadVideo = async (
   videoId: string, 
   format: Format,
@@ -135,7 +155,7 @@ export const downloadVideo = async (
     const isBackendAvailable = await checkBackendConnection();
     if (!isBackendAvailable) {
       toast.error('Backend Connection Error', {
-        description: 'Unable to connect to the download server. Make sure the Go backend is running on 195.88.71.182:8080.',
+        description: `Unable to connect to the download server at ${getServerAddress()}. Make sure the Go backend is running.`,
       });
       throw new Error('Backend server is not available. Please start the server and try again.');
     }
@@ -144,22 +164,29 @@ export const downloadVideo = async (
     onProgress(5);
     
     // Start the download process
-    const initResponse = await fetch(`${API_BASE_URL}/download?id=${videoId}&format=${format}&resolution=${resolution}`);
+    const initResponse = await fetch(`${getApiBaseUrl()}/download?id=${videoId}&format=${format}&resolution=${resolution}`);
     
     if (!initResponse.ok) {
       throw new Error(`Failed to start download: ${initResponse.status}`);
     }
     
     // For progress tracking, we'll use an EventSource to listen for progress updates
-    const eventSource = new EventSource(`${API_BASE_URL}/progress?id=${videoId}`);
+    const eventSource = new EventSource(`${getApiBaseUrl()}/progress?id=${videoId}`);
     
     return new Promise((resolve, reject) => {
       let downloadedFilePath: string | undefined;
+      let lastProgress = 5;
+      let lastUpdate = Date.now();
       
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data) as DownloadProgress;
-        if (data.progress) {
+        
+        // Only update if progress changed significantly or time passed
+        const now = Date.now();
+        if (data.progress && (data.progress > lastProgress + 1 || now - lastUpdate > 1000)) {
           onProgress(data.progress);
+          lastProgress = data.progress;
+          lastUpdate = now;
         }
         
         // Store the file path for return when complete
@@ -167,7 +194,7 @@ export const downloadVideo = async (
           // Ensure we have a full URL with the backend server
           downloadedFilePath = data.filePath.startsWith('http') 
             ? data.filePath 
-            : `http://195.88.71.182:8080${data.filePath}`;
+            : `http://${getServerAddress()}${data.filePath}`;
         }
         
         // When download is complete, close the connection and resolve with the file path
@@ -186,6 +213,14 @@ export const downloadVideo = async (
         eventSource.close();
         reject(new Error('Download failed. Check network connection or try again later.'));
       };
+      
+      // Set a timeout in case the EventSource doesn't receive any messages
+      setTimeout(() => {
+        if (lastProgress <= 5) {
+          eventSource.close();
+          reject(new Error('Download timed out. The server might be busy or unreachable.'));
+        }
+      }, 30000); // 30 second timeout
     });
   } catch (error) {
     console.error('Download error:', error);
@@ -206,7 +241,7 @@ export const getDownloadedFilePath = async (
       return null;
     }
     
-    const response = await fetch(`${API_BASE_URL}/getFile?id=${videoId}&format=${format}`);
+    const response = await fetch(`${getApiBaseUrl()}/getFile?id=${videoId}&format=${format}`);
     
     if (!response.ok) {
       return null;
@@ -217,7 +252,7 @@ export const getDownloadedFilePath = async (
     // Make sure we return a full URL with our backend server
     return data.filePath.startsWith('http') 
       ? data.filePath 
-      : `http://195.88.71.182:8080${data.filePath}`;
+      : `http://${getServerAddress()}${data.filePath}`;
   } catch (error) {
     console.error('Error getting file path:', error);
     return null;

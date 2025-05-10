@@ -1,10 +1,12 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle, Download, Loader, FileVideo, FileAudio, Play, Pause, Save } from 'lucide-react';
 import { Format, VideoResolution } from './FormatSelector';
+import { toast } from 'sonner';
+import { getServerAddress } from '@/services/api';
 
 export type DownloadState = 'idle' | 'loading' | 'ready' | 'downloading' | 'complete' | 'error' | 'playing';
 
@@ -40,6 +42,16 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [audioError, setAudioError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Update download URL when preview URL changes
+    if (previewUrl && !previewUrl.includes('youtube.com/embed')) {
+      setDownloadUrl(previewUrl);
+    } else {
+      setDownloadUrl(null);
+    }
+  }, [previewUrl]);
 
   const handlePlayPause = () => {
     if (!audioRef.current) return;
@@ -67,18 +79,38 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
     
     try {
       setIsSaving(true);
+      toast.info('Starting download to your device...', {
+        description: 'Please wait while we prepare your file.',
+      });
+      
       // Get the file extension from the format
       const fileExt = format === 'mp4' ? '.mp4' : '.mp3';
       // Create a safe filename from the video title
       const safeFileName = (videoTitle || 'download').replace(/[^a-z0-9]/gi, '_').toLowerCase() + fileExt;
       
+      // For YouTube embedded URLs, we can't download directly
+      if (previewUrl.includes('youtube.com/embed')) {
+        toast.error('Direct download unavailable', {
+          description: 'Cannot download from YouTube embed. Please use the backend server.',
+        });
+        setIsSaving(false);
+        return;
+      }
+      
       // Fetch the file from the backend
       const response = await fetch(previewUrl);
-      if (!response.ok) throw new Error('Failed to download file');
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status} ${response.statusText}`);
+      }
       
       // Get the blob from the response
       const blob = await response.blob();
       
+      // Check if we got a valid file
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
+
       // Create a blob URL for downloading
       const url = window.URL.createObjectURL(blob);
       
@@ -94,11 +126,37 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
       // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      
+      toast.success('Download complete!', {
+        description: `Your file has been saved as ${safeFileName}`,
+      });
     } catch (error) {
       console.error('Error saving file:', error);
+      toast.error('Download failed', {
+        description: error instanceof Error ? error.message : 'Could not download the file to your device',
+      });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Show server information during download
+  const renderServerInfo = () => {
+    if (state !== 'downloading') return null;
+    
+    return (
+      <div className="text-xs text-muted-foreground mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-md">
+        <p className="flex items-center">
+          <span className="font-medium">Server:</span>
+          <span className="ml-1">{getServerAddress()}</span>
+        </p>
+        <p className="mt-1">
+          {progress <= 5 
+            ? 'Waiting for server to respond...' 
+            : 'Downloading in progress on server...'}
+        </p>
+      </div>
+    );
   };
 
   if (state === 'idle') return null;
@@ -225,6 +283,7 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
               {videoTitle ? `Downloading "${videoTitle}"` : 'Downloading your file'}
               {format === 'mp4' && resolution && ` (${resolution})`}
             </p>
+            {renderServerInfo()}
             <div className="text-xs text-muted-foreground mt-2">
               <p>
                 {format === 'mp4' 
