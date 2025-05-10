@@ -79,7 +79,7 @@ func main() {
 	}))
 
 	// Start server
-	port := 8080
+	port := 80
 	log.Printf("Starting server on :%d...", port)
 	log.Printf("Media directory: %s", mediaDir)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
