@@ -3,7 +3,7 @@ import React, { useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle, Download, Loader, FileVideo, FileAudio, Play, Pause } from 'lucide-react';
+import { AlertCircle, CheckCircle, Download, Loader, FileVideo, FileAudio, Play, Pause, Save } from 'lucide-react';
 import { Format, VideoResolution } from './FormatSelector';
 
 export type DownloadState = 'idle' | 'loading' | 'ready' | 'downloading' | 'complete' | 'error' | 'playing';
@@ -39,6 +39,7 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [audioError, setAudioError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handlePlayPause = () => {
     if (!audioRef.current) return;
@@ -58,6 +59,46 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
   const handleAudioError = () => {
     console.error("Audio failed to load");
     setAudioError(true);
+  };
+
+  // Function to save file to the user's computer
+  const saveFileToComputer = async () => {
+    if (!previewUrl) return;
+    
+    try {
+      setIsSaving(true);
+      // Get the file extension from the format
+      const fileExt = format === 'mp4' ? '.mp4' : '.mp3';
+      // Create a safe filename from the video title
+      const safeFileName = (videoTitle || 'download').replace(/[^a-z0-9]/gi, '_').toLowerCase() + fileExt;
+      
+      // Fetch the file from the backend
+      const response = await fetch(previewUrl);
+      if (!response.ok) throw new Error('Failed to download file');
+      
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create a blob URL for downloading
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = safeFileName;
+      document.body.appendChild(a);
+      
+      // Trigger the download
+      a.click();
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error saving file:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (state === 'idle') return null;
@@ -149,13 +190,24 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
                 Download Now
               </Button>
             ) : (
-              <Button 
-                variant="outline"
-                className="w-full" 
-                onClick={onRetry}
-              >
-                Download Another
-              </Button>
+              <div className="space-y-2">
+                <Button 
+                  variant="outline"
+                  className="w-full" 
+                  onClick={saveFileToComputer}
+                  disabled={isSaving}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {isSaving ? 'Saving to your device...' : 'Save to your device'}
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="w-full" 
+                  onClick={onRetry}
+                >
+                  Download Another
+                </Button>
+              </div>
             )}
           </div>
         )}
@@ -178,29 +230,39 @@ const DownloadStatus: React.FC<DownloadStatusProps> = ({
                 {format === 'mp4' 
                   ? <><FileVideo className="inline h-3 w-3 mr-1" /> Downloading video file in MP4 format.</>
                   : <><FileAudio className="inline h-3 w-3 mr-1" /> Downloading audio file in MP3 format.</>} 
-                  Your file will automatically download when ready.
+                  The file will be processed on the server and then ready to save to your device.
               </p>
             </div>
           </div>
         )}
 
         {state === 'complete' && (
-          <div className="text-center space-y-4">
-            <div className="mx-auto w-10 h-10 text-green-500">
-              <CheckCircle className="w-full h-full" />
-            </div>
-            <div>
-              <p className="font-medium">Download Complete!</p>
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="mx-auto w-10 h-10 text-green-500">
+                <CheckCircle className="w-full h-full" />
+              </div>
+              <p className="font-medium mt-2">Download Complete!</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Your {format === 'mp4' 
                   ? <><FileVideo className="inline h-4 w-4 mr-1" /> MP4 video</>
-                  : <><FileAudio className="inline h-4 w-4 mr-1" /> MP3 audio</>} file has been downloaded.
+                  : <><FileAudio className="inline h-4 w-4 mr-1" /> MP3 audio</>} is ready to save.
                 {format === 'mp4' && resolution && ` Resolution: ${resolution}`}
               </p>
-              <p className="text-xs text-gray-500 mt-3">
-                Note: For this demo, a text file with information about the download process has been provided.
-              </p>
             </div>
+            
+            {previewUrl && (
+              <Button 
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                onClick={saveFileToComputer}
+                disabled={isSaving}
+                size="lg"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {isSaving ? 'Saving to your device...' : 'Save to your device'}
+              </Button>
+            )}
+            
             <Button 
               variant="outline"
               className="w-full" 

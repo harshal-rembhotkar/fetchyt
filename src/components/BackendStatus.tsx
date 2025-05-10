@@ -13,9 +13,9 @@ const BackendStatus = () => {
     setIsChecking(true);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch('http://localhost:8080/api/info?url=test', {
+      const response = await fetch('http://195.88.71.182:8080/api/info?url=test', {
         method: 'GET',
         signal: controller.signal
       }).catch(() => null);
@@ -44,7 +44,7 @@ const BackendStatus = () => {
       <AlertTitle>Backend Server Not Connected</AlertTitle>
       <AlertDescription className="space-y-4">
         <p>
-          Cannot connect to the download server. To use FetchYT, please make sure the Go backend is running on port 8080.
+          Cannot connect to the download server. To use FetchYT, please make sure the Go backend is running on 195.88.71.182:8080.
         </p>
         <div className="flex space-x-2">
           <Button 

@@ -17,14 +17,16 @@ export interface DownloadProgress {
   filePath?: string;
 }
 
-// Base URL for our Go backend API
-const API_BASE_URL = 'http://localhost:8080/api';
+// Base URL for our Go backend API - update to use the cloud server
+const API_BASE_URL = 'http://195.88.71.182:8080/api';
+// Base Media URL for downloads
+const MEDIA_BASE_URL = 'http://195.88.71.182:8080/media';
 
 // Check if backend is available
 const checkBackendConnection = async (): Promise<boolean> => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
     const response = await fetch(`${API_BASE_URL}/info?url=test`, {
       method: 'GET',
@@ -45,7 +47,7 @@ export const fetchVideoInfo = async (url: string): Promise<VideoInfo> => {
     const isBackendAvailable = await checkBackendConnection();
     if (!isBackendAvailable) {
       toast.error('Backend Connection Error', {
-        description: 'Unable to connect to the download server. Make sure the Go backend is running on port 8080.',
+        description: 'Unable to connect to the download server. Make sure the Go backend is running on 195.88.71.182:8080.',
       });
       throw new Error('Backend server is not available. Please start the server and try again.');
     }
@@ -85,7 +87,9 @@ export const generatePreviewUrl = async (
         });
 
         if (response.ok) {
-          return await response.text();
+          const previewPath = await response.text();
+          // Convert relative path to absolute URL with our backend
+          return previewPath.startsWith('http') ? previewPath : `http://195.88.71.182:8080${previewPath}`;
         }
       } catch (error) {
         console.warn('Preview generation using backend failed, using fallback:', error);
@@ -103,8 +107,9 @@ export const generatePreviewUrl = async (
         throw new Error(`Failed to generate preview: ${response.status}`);
       }
 
-      // Return URL to preview the content
-      return await response.text();
+      // Return URL to preview the content (make sure it's a full URL)
+      const previewPath = await response.text();
+      return previewPath.startsWith('http') ? previewPath : `http://195.88.71.182:8080${previewPath}`;
     }
   } catch (error) {
     console.error('Preview generation error:', error);
@@ -130,7 +135,7 @@ export const downloadVideo = async (
     const isBackendAvailable = await checkBackendConnection();
     if (!isBackendAvailable) {
       toast.error('Backend Connection Error', {
-        description: 'Unable to connect to the download server. Make sure the Go backend is running on port 8080.',
+        description: 'Unable to connect to the download server. Make sure the Go backend is running on 195.88.71.182:8080.',
       });
       throw new Error('Backend server is not available. Please start the server and try again.');
     }
@@ -159,7 +164,10 @@ export const downloadVideo = async (
         
         // Store the file path for return when complete
         if (data.filePath) {
-          downloadedFilePath = `http://localhost:8080${data.filePath}`;
+          // Ensure we have a full URL with the backend server
+          downloadedFilePath = data.filePath.startsWith('http') 
+            ? data.filePath 
+            : `http://195.88.71.182:8080${data.filePath}`;
         }
         
         // When download is complete, close the connection and resolve with the file path
@@ -205,7 +213,11 @@ export const getDownloadedFilePath = async (
     }
     
     const data = await response.json();
-    return `http://localhost:8080${data.filePath}`;
+    
+    // Make sure we return a full URL with our backend server
+    return data.filePath.startsWith('http') 
+      ? data.filePath 
+      : `http://195.88.71.182:8080${data.filePath}`;
   } catch (error) {
     console.error('Error getting file path:', error);
     return null;
