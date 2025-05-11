@@ -48,7 +48,7 @@ const checkBackendConnection = async (): Promise<boolean> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 50000); // 5 second timeout
     
-    const response = await fetch(`${getApiBaseUrl()}/info?url=test`, {
+    const response = await fetch(`${getApiBaseUrl()}/info?url=https://youtu.be/s9Qh9fWeOAk?si=Ct3jZum55nmSsABX`, {
       method: 'GET',
       signal: controller.signal
     }).catch(() => null);
@@ -67,7 +67,7 @@ export const fetchVideoInfo = async (url: string): Promise<VideoInfo> => {
     const isBackendAvailable = await checkBackendConnection();
     if (!isBackendAvailable) {
       toast.error('Backend Connection Error', {
-        description: `Unable to connect to the download server at ${getServerAddress()}. Make sure the Go backend is running.`,
+        description: `Unable to connect to the download server.`,
       });
       throw new Error('Backend server is not available. Please start the server and try again.');
     }
