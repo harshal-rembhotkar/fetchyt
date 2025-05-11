@@ -1,4 +1,5 @@
 # FetchYT
+This Go web application allows users to download YouTube videos in various formats and resolutions. It integrates yt-dlp for video fetching and FFmpeg for processing, enabling users to preview video/audio and track download progress in real-time.
 
 ## Project info
 
