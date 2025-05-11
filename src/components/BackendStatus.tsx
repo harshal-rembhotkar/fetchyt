@@ -9,7 +9,7 @@ const BackendStatus = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
-  const [serverAddress, setServerAddress] = useState('195.88.71.182:8080/api');
+  const [serverAddress, setServerAddress] = useState('195.88.71.182:8080');
 
   const checkBackendConnection = async () => {
     setIsChecking(true);
