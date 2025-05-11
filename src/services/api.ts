@@ -24,7 +24,7 @@ export const getServerAddress = (): string => {
   if (savedAddress) return savedAddress;
   
   // Default value
-  return '195.88.71.182:80';
+  return '195.88.71.182:8080';
 };
 
 // Set the server address
@@ -34,7 +34,7 @@ export const setServerAddress = (address: string): void => {
 
 // Base URL for our Go backend API
 export const getApiBaseUrl = (): string => {
-  return `http://195.88.71.182:80/api`;
+  return `http://195.88.71.182:8080/api`;
 };
 
 // Base Media URL for downloads
