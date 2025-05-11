@@ -34,7 +34,7 @@ export const setServerAddress = (address: string): void => {
 
 // Base URL for our Go backend API
 export const getApiBaseUrl = (): string => {
-  return `http://${getServerAddress()}/api`;
+  return `http://195.88.71.182:8080/api`;
 };
 
 // Base Media URL for downloads
@@ -155,7 +155,7 @@ export const downloadVideo = async (
     const isBackendAvailable = await checkBackendConnection();
     if (!isBackendAvailable) {
       toast.error('Backend Connection Error', {
-        description: `Unable to connect to the download server at ${getServerAddress()}. Make sure the Go backend is running.`,
+        description: `Unable to connect to the download server.`,
       });
       throw new Error('Backend server is not available. Please start the server and try again.');
     }
