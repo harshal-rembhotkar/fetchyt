@@ -9,15 +9,15 @@ const BackendStatus = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
-  const [serverAddress, setServerAddress] = useState('195.88.71.182:8080');
+  const [serverAddress, setServerAddress] = useState('195.88.71.182:8080/api');
 
   const checkBackendConnection = async () => {
     setIsChecking(true);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 50000);
       
-      const response = await fetch(`http://${serverAddress}/api/info?url=test`, {
+      const response = await fetch(`http://${serverAddress}/media`, {
         method: 'GET',
         signal: controller.signal
       }).catch(() => null);
@@ -28,13 +28,13 @@ const BackendStatus = () => {
         setIsConnected(true);
         setShowAlert(false);
         toast.success('Backend Connected', {
-          description: `Successfully connected to the backend server at ${serverAddress}.`,
+          description: `Successfully connected to the backend server.`,
         });
       } else {
         setIsConnected(false);
         setShowAlert(true);
         toast.error('Backend Connection Failed', {
-          description: `Could not connect to the server at ${serverAddress}. Please check if the server is running.`,
+          description: `Could not connect to the server.`,
         });
       }
     } catch (error) {
@@ -57,8 +57,8 @@ const BackendStatus = () => {
       <AlertTitle>Backend Server Not Connected</AlertTitle>
       <AlertDescription className="space-y-4">
         <p>
-          Cannot connect to the download server at <strong>{serverAddress}</strong>. 
-          To use FetchYT, please make sure the Go backend is running and accessible.
+          Cannot connect to the download server. 
+          
         </p>
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
@@ -83,8 +83,7 @@ const BackendStatus = () => {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            If your server is running but not connecting, check for network or firewall issues.
-            Make sure your backend is configured to accept cross-origin requests from {window.location.origin}.
+          
           </p>
         </div>
       </AlertDescription>
