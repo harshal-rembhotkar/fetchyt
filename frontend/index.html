@@ -1,0 +1,109 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FetchYT - YouTube Downloader</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <i class="fab fa-youtube"></i>
+        <h1>FetchYT</h1>
+      </div>
+      <p class="tagline">Download YouTube videos and audio with ease</p>
+    </header>
+
+    <div class="search-container">
+      <input type="text" id="url-input" placeholder="Paste YouTube URL here...">
+      <button id="fetch-btn">Fetch</button>
+    </div>
+
+    <div id="video-info" class="hidden">
+      <div class="video-details">
+        <img id="thumbnail" src="" alt="Video thumbnail">
+        <div class="info">
+          <h2 id="video-title"></h2>
+          <p id="video-author"></p>
+          <p id="video-duration"></p>
+        </div>
+      </div>
+
+      <div class="download-options">
+        <div class="format-selector">
+          <h3>Download Format</h3>
+          <div class="format-options">
+            <label class="format-option">
+              <input type="radio" name="format" value="mp4" checked>
+              <span class="format-label"><i class="fas fa-video"></i> Video (MP4)</span>
+            </label>
+            <label class="format-option">
+              <input type="radio" name="format" value="mp3">
+              <span class="format-label"><i class="fas fa-music"></i> Audio (MP3)</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="resolution-selector" class="resolution-selector">
+          <h3>Video Quality</h3>
+          <div class="resolution-options">
+            <label class="resolution-option">
+              <input type="radio" name="resolution" value="360p">
+              <span class="resolution-label">360p</span>
+            </label>
+            <label class="resolution-option">
+              <input type="radio" name="resolution" value="480p">
+              <span class="resolution-label">480p</span>
+            </label>
+            <label class="resolution-option">
+              <input type="radio" name="resolution" value="720p" checked>
+              <span class="resolution-label">720p</span>
+            </label>
+            <label class="resolution-option">
+              <input type="radio" name="resolution" value="1080p">
+              <span class="resolution-label">1080p</span>
+            </label>
+          </div>
+        </div>
+
+        <button id="download-btn">Download</button>
+      </div>
+    </div>
+
+    <div id="preview-container" class="hidden">
+      <h3>Preview</h3>
+      <div id="preview-content">
+        <!-- Preview content (video or audio) will be inserted here -->
+      </div>
+    </div>
+
+    <div id="progress-container" class="hidden">
+      <h3>Download Progress</h3>
+      <div class="progress-bar">
+        <div id="progress-bar-fill"></div>
+      </div>
+      <p id="progress-text">0%</p>
+      <div id="download-complete" class="hidden">
+        <p>Download Complete!</p>
+        <a id="download-link" class="download-button" href="#" download>Save to Computer</a>
+        <p class="download-note">If the download doesn't start automatically, try right-clicking the button and selecting "Save link as..."</p>
+      </div>
+    </div>
+
+    <div id="error-message" class="hidden">
+      <p>An error occurred. Please try again.</p>
+    </div>
+
+    <footer>
+      <p>FetchYT - YouTube Downloader</p>
+      <p class="disclaimer">For personal use only. Please respect YouTube's Terms of Service.</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
