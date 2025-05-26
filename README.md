@@ -1,29 +1,3 @@
-# FetchYT
-This Go web application allows users to download YouTube videos in various formats and resolutions. It integrates yt-dlp for video fetching and FFmpeg for processing, enabling users to preview video/audio and track download progress in real-time.
-
-## Project info
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
 
 # FetchYT Backend Server
 
@@ -57,4 +31,26 @@ go build
 ./fetchyt-backend
 ```
 
-The server will start on `http://localhost:8080` by default.
+The server will start on `http://localhost:80` by default.
+
+## API Endpoints
+
+### Get Video Information
+```
+GET /api/info?url={youtube_url}
+```
+
+### Generate Preview
+```
+GET /api/preview?id={video_id}&format={mp4|mp3}&resolution={360p|480p|720p|1080p}
+```
+
+### Start Download
+```
+GET /api/download?id={video_id}&format={mp4|mp3}&resolution={360p|480p|720p|1080p}
+```
+
+### Monitor Download Progress
+```
+GET /api/progress?id={video_id}
+```
